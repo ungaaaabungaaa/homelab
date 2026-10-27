@@ -1,0 +1,145 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HomeLab local monitor",
+    "version": "1.0.0",
+    "description": "Read-only loopback service; strict Host, no query parameters, no writes, no authentication, no CORS. HEAD has matching headers and no body."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8086"
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Collector has a current sample."
+          },
+          "503": {
+            "description": "Missing, stale, future-dated or unreadable sample."
+          },
+          "403": {
+            "description": "Host is not the exact loopback host and listening port."
+          },
+          "405": {
+            "description": "Unsupported method."
+          }
+        }
+      }
+    },
+    "/api/history": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Bounded ordered history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "schema_version",
+                    "scope",
+                    "retention_samples",
+                    "interval_seconds",
+                    "healthy",
+                    "samples"
+                  ],
+                  "properties": {
+                    "schema_version": {
+                      "const": 1
+                    },
+                    "scope": {
+                      "const": "data-filesystem-and-visible-os-load"
+                    },
+                    "retention_samples": {
+                      "const": 1440
+                    },
+                    "interval_seconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 3600
+                    },
+                    "healthy": {
+                      "type": "boolean"
+                    },
+                    "samples": {
+                      "type": "array",
+                      "maxItems": 1440,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "timestamp_ms",
+                          "disk_total_bytes",
+                          "disk_free_bytes",
+                          "load1"
+                        ],
+                        "properties": {
+                          "timestamp_ms": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "disk_total_bytes": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "disk_free_bytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "load1": {
+                            "type": [
+                              "number",
+                              "null"
+                            ],
+                            "minimum": 0
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database unavailable."
+          },
+          "403": {
+            "description": "Host is not the exact loopback host and listening port."
+          },
+          "405": {
+            "description": "Unsupported method."
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Prometheus0.0.4 text. No timestamps are attached to gauge samples. Staleness is reported by homelab_collector_healthy.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database unavailable."
+          },
+          "403": {
+            "description": "Host is not the exact loopback host and listening port."
+          },
+          "405": {
+            "description": "Unsupported method."
+          }
+        }
+      }
+    }
+  }
+}

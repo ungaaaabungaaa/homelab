@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.local-data/
+.local-backup/
+.local-restored/
+.coverage
+htmlcov/

@@ -1,0 +1,9 @@
+# Local monitor contract
+
+Python3.12+; no application dependencies. All HTTP routes are GET/HEAD, read-only, and reject foreign Host headers. Bind127.0.0.1 by default; Docker explicitly binds inside its container and maps only host127.0.0.1:8086. Exact routes: /, /app.js, /style.css, /healthz, /api/history, /metrics. No user paths accepted through HTTP. JSON history schema1: samples contain integer timestamp_ms, disk_total_bytes, disk_free_bytes, load1 number or null. Disk readings refer to the data filesystem; load1 is OS/process namespace visible, not a host guarantee. GET history returns at most1440 samples. No identifying hostname/path is returned.
+
+Commands: serve --data DIR [--port8086] [--interval10]; backup --data DIR --out NEW_DIR; restore --backup DIR --data NEW_DIR; demo --out NEW_DIR. Collection interval1..3600s. SQLite retains1440 latest rows. Health is503 before first sample, if sample is stale for max(30,3×interval) seconds, or on DB read failure; otherwise200. A collector error is recorded to stderr and retried next interval; never replace old data with invented readings. HTTP errors return plain text, no local paths.
+
+Backup uses SQLite backup API; output is a new directory with database.sqlite3 and manifest.json (schema1, SHA256, bytes, row count). Backups must pass quick_check and supported schema, bounded size64MiB and1440rows. Restore validates bytes and contents, creates only a new data directory, and never overwrites an existing database. No live-server restore; stop service and use a new directory. Snapshot hash proves byte integrity, not encryption or trusted authorship. Backups contain metric history only.
+
+No service deployment, host monitoring, or hardware operation is claimed until matching checks run. Docker CI verifies actual container start, health, named-volume persistence and backup/restore. Synthetic fixture is separate from live readings.
