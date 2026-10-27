@@ -1,0 +1,37 @@
+{
+  "fixture": "synthetic",
+  "samples": [
+    {
+      "timestamp_ms": 1700000000000,
+      "disk_total_bytes": 1000,
+      "disk_free_bytes": 800,
+      "load1": null
+    },
+    {
+      "timestamp_ms": 1700000010000,
+      "disk_total_bytes": 1000,
+      "disk_free_bytes": 750,
+      "load1": null
+    },
+    {
+      "timestamp_ms": 1700000020000,
+      "disk_total_bytes": 1000,
+      "disk_free_bytes": 700,
+      "load1": null
+    },
+    {
+      "timestamp_ms": 1700000030000,
+      "disk_total_bytes": 1000,
+      "disk_free_bytes": 680,
+      "load1": null
+    },
+    {
+      "timestamp_ms": 1700000040000,
+      "disk_total_bytes": 1000,
+      "disk_free_bytes": 720,
+      "load1": null
+    }
+  ],
+  "restore_equal": true,
+  "backup_rows": 5
+}

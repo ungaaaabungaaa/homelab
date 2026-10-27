@@ -1,0 +1,23 @@
+services:
+  monitor:
+    build: .
+    ports:
+      - "127.0.0.1:8086:8086"
+    volumes:
+      - readings:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.5
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8086/healthz',timeout=3).read()"]
+      interval: 10s
+      timeout: 4s
+      retries: 3
+volumes:
+  readings:
