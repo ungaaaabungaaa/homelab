@@ -7,3 +7,5 @@ Next useful work:
 - Assess local authentication needs before adding any remote access.
 
 No user's live network, Docker installation or private monitoring data is changed by development checks.
+
+Delivered in the final round on 28 October 2026: restore/verify reject boolean/float/out-of-bound manifest metadata, duplicate keys and malformed or over-nested JSON. Unsupported metadata can no longer receive a verified-success receipt.

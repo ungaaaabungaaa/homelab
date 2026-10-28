@@ -183,15 +183,43 @@ def backup(data, output):
         raise
 
 
-def restore(source, data):
-    source, data = Path(source), Path(data)
-    manifest = json.loads(regular_bytes(source / "manifest.json", 4096))
-    raw = regular_bytes(source / "database.sqlite3", MAX_DB)
+def read_manifest(source):
+    def unique_fields(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("Duplicate snapshot manifest field.")
+            result[key] = value
+        return result
+
+    try:
+        manifest = json.loads(
+            regular_bytes(source / "manifest.json", 4096),
+            object_pairs_hook=unique_fields,
+        )
+    except (UnicodeError, json.JSONDecodeError, RecursionError) as error:
+        raise ValueError("Snapshot manifest is not supported JSON.") from error
     if (
         not isinstance(manifest, dict)
         or set(manifest) != {"schema_version", "sha256", "bytes", "rows"}
+        or any(type(manifest[key]) is not int for key in ("schema_version", "bytes", "rows"))
         or manifest["schema_version"] != 1
-        or manifest["bytes"] != len(raw)
+        or not 1 <= manifest["bytes"] <= MAX_DB
+        or not 0 <= manifest["rows"] <= LIMIT
+        or not isinstance(manifest["sha256"], str)
+        or len(manifest["sha256"]) != 64
+        or any(char not in "0123456789abcdef" for char in manifest["sha256"])
+    ):
+        raise ValueError("Snapshot manifest fields or types are unsupported.")
+    return manifest
+
+
+def restore(source, data):
+    source, data = Path(source), Path(data)
+    manifest = read_manifest(source)
+    raw = regular_bytes(source / "database.sqlite3", MAX_DB)
+    if (
+        manifest["bytes"] != len(raw)
         or manifest["sha256"] != hashlib.sha256(raw).hexdigest()
     ):
         raise ValueError("Snapshot manifest does not match its database.")
