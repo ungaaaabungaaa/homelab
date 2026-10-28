@@ -106,6 +106,33 @@ class LabTests(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertIn("manifest", result.stderr)
 
+    def test_manifest_types_and_duplicate_keys_are_rejected_before_restore(self):
+        lab.record(self.data, self.sample())
+        source = self.root / "backup"
+        receipt = lab.backup(self.data, source)
+        changes = [
+            {"schema_version": True}, {"schema_version": 1.0},
+            {"rows": True}, {"rows": 1.0}, {"rows": -1}, {"rows": lab.LIMIT+1},
+            {"bytes": float(receipt["bytes"])}, {"bytes": True},
+            {"sha256": "g"*64}, {"sha256": None},
+        ]
+        for index, change in enumerate(changes):
+            (source / "manifest.json").write_text(json.dumps({**receipt, **change}))
+            destination = self.root / f"invalid-{index}"
+            with self.assertRaises(ValueError):
+                lab.restore(source, destination)
+            self.assertFalse(destination.exists())
+        original = json.dumps(receipt)
+        for payload in [original[:-1] + ',"schema_version":1}', '['*2000+'0'+']'*2000, '{']:
+            (source / "manifest.json").write_text(payload)
+            with self.assertRaises(ValueError):
+                lab.verify_backup(source)
+        command = [sys.executable, str(Path(lab.__file__).resolve()), "verify", "--backup", str(source)]
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
+        self.assertNotIn("Traceback", result.stderr)
+
     def test_corrupt_snapshot_rejected_without_creating_destination(self):
         dest = self.root / "backup"
         lab.backup(self.data, dest)
