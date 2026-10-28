@@ -12,6 +12,7 @@ import shutil
 import sqlite3
 import stat
 import sys
+import tempfile
 import threading
 import time
 
@@ -208,6 +209,21 @@ def restore(source, data):
         raise
 
 
+def verify_backup(source):
+    """Prove a snapshot restores in disposable storage; leave the source unchanged."""
+    with tempfile.TemporaryDirectory(prefix="homelab-restore-drill-") as temporary:
+        data = Path(temporary) / "restored"
+        restore(source, data)
+        raw = regular_bytes(data / "database.sqlite3", MAX_DB)
+        return {
+            "schema_version": 1,
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "bytes": len(raw),
+            "rows": len(history(data)),
+            "verified": True,
+        }
+
+
 def make_server(data, port=8086, interval=10, host="127.0.0.1"):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -330,12 +346,17 @@ def main(argv=None):
     res = sub.add_parser("restore")
     res.add_argument("--backup", type=Path, required=True)
     res.add_argument("--data", type=Path, required=True)
+    verify = sub.add_parser("verify", help="Check a backup with a disposable restore drill")
+    verify.add_argument("--backup", type=Path, required=True)
     demo = sub.add_parser("demo")
     demo.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "backup":
             print(json.dumps(backup(args.data, args.out), indent=2))
+            return 0
+        if args.command == "verify":
+            print(json.dumps(verify_backup(args.backup), indent=2))
             return 0
         if args.command == "restore":
             restore(args.backup, args.data)

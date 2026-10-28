@@ -4,6 +4,8 @@ import http.client
 import json
 from pathlib import Path
 import tempfile
+import subprocess
+import sys
 import threading
 import unittest
 import homelab as lab
@@ -70,6 +72,39 @@ class LabTests(unittest.TestCase):
             lab.restore(dest, restored)
         with self.assertRaises(FileExistsError):
             lab.backup(self.data, dest)
+
+    def test_backup_verification_runs_a_disposable_restore_without_changing_source(self):
+        lab.record(self.data, self.sample())
+        dest = self.root / "backup"
+        receipt = lab.backup(self.data, dest)
+        before = {path.name: path.read_bytes() for path in dest.iterdir()}
+        self.assertEqual(lab.verify_backup(dest), {**receipt, "verified": True})
+        self.assertEqual(
+            {path.name: path.read_bytes() for path in dest.iterdir()}, before
+        )
+        self.assertEqual(
+            sorted(path.name for path in self.root.iterdir()), ["backup", "data"]
+        )
+        (dest / "database.sqlite3").write_bytes(b"corrupt")
+        with self.assertRaises(ValueError):
+            lab.verify_backup(dest)
+
+    def test_verify_cli_reports_valid_backup_and_rejects_corruption(self):
+        dest = self.root / "backup"
+        lab.backup(self.data, dest)
+        command = [
+            sys.executable, str(Path(lab.__file__).resolve()),
+            "verify", "--backup", str(dest),
+        ]
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(json.loads(result.stdout)["verified"])
+        self.assertEqual(json.loads(result.stdout)["rows"], 0)
+        (dest / "manifest.json").write_text("{}")
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("manifest", result.stderr)
 
     def test_corrupt_snapshot_rejected_without_creating_destination(self):
         dest = self.root / "backup"
