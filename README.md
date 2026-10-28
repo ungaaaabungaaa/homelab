@@ -40,8 +40,11 @@ For a local run, the service can stay running during backup:
 
 ```sh
 python3 homelab.py backup --data .local-data --out .local-backup
+python3 homelab.py verify --backup .local-backup
 python3 homelab.py restore --backup .local-backup --data .local-restored
 ```
+
+`verify` performs a complete restore into temporary storage, checks the restored history, and reports the verified row count, byte size and SHA-256. It removes its temporary files automatically and leaves the backup and live data unchanged. It needs temporary free space at least as large as the database (up to 64 MiB). Verification checks this local snapshot; separate-device recovery still needs a separate drill.
 
 Both destination directories must be new. Backup uses SQLite's online backup API for a consistent snapshot. Restore checks SHA-256, byte size, database integrity, schema, and all sample values. It never overwrites an existing data directory. Stop the old service, then start it with `--data .local-restored` when you intend to use the recovered history. Keep backup copies on a separate storage device to protect against device failure; no backup transport or encryption is supplied.
 
